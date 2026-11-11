@@ -2,6 +2,7 @@ import pickle
 from pathlib import Path
 
 import pandas as pd
+import numpy as np
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.linear_model import LinearRegression
 
@@ -10,6 +11,7 @@ DATA_URL = (
     "https://raw.githubusercontent.com/leontoddjohnson/datasets/refs/heads/main/"
     "data/coffee_analysis.csv"
 )
+
 ROAST_CATEGORIES = {
     "Light": 0,
     "Medium-Light": 1,
@@ -19,32 +21,33 @@ ROAST_CATEGORIES = {
 }
 
 
-def roast_category(roast: object) -> int | float:
-    if not isinstance(roast, str):
-        return float("nan")
-    return ROAST_CATEGORIES.get(roast, float("nan"))
+def roast_category(roast):
+    return ROAST_CATEGORIES.get(roast, np.nan)
 
-
-def main() -> None:
-    data = pd.read_csv(DATA_URL)
-    y = data["rating"]
-
-    lr = LinearRegression()
-    lr.fit(data[["100g_USD"]], y)
-
-    data["roast_cat"] = data["roast"].map(roast_category)
-    dtr = DecisionTreeRegressor(random_state=0)
-    dtr.fit(data[["100g_USD", "roast_cat"]].values, y)
-
-    output_dir = Path(__file__).resolve().parent
-    for model, filename in (
-        (lr, "model_1.pickle"),
-        (dtr, "model_2.pickle"),
-    ):
-        model_path = output_dir / filename
-        with model_path.open("wb") as model_file:
-            pickle.dump(model, model_file, protocol=pickle.HIGHEST_PROTOCOL)
-
+def save_model(model, path):
+    with open(path, "wb") as f:
+        pickle.dump(model, f)
 
 if __name__ == "__main__":
-    main()
+    # Load the data
+    coffee_df = pd.read_csv(DATA_URL)
+
+    # Train the Linear Regression model
+    X = coffee_df[["100g_USD"]].values
+    y = coffee_df["rating"].values
+    lr = LinearRegression()
+    lr.fit(X, y)
+
+    #save model_1
+    save_model(lr, "model_1.pickle")
+    print("Linear Regression model saved as model_1.pickle")
+
+    # Train the Decision Tree model
+    coffee_df["roast_cat"] = coffee_df["roast"].map(roast_category)
+    X_dtr = coffee_df[["100g_USD", "roast_cat"]].values
+    dtr = DecisionTreeRegressor(random_state=0)
+    dtr.fit(X_dtr, y)
+
+    #save model_2
+    save_model(dtr, "model_2.pickle")
+    print("Decision Tree model saved as model_2.pickle")
